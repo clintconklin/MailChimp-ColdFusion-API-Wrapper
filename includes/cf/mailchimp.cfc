@@ -426,23 +426,18 @@
 	</cffunction>
 
 	<!--- ADDED 11.14.12 by Clint Conklin/CreativEngine
-		NOTE: merges are dynamic and passed in as a struct; construct your merges like so (example from CSA; tailor to the individual set of merge fields):
+		NOTE: merges are dynamic and passed in as a struct; construct your merges like so:
 
 		<cfset merges = structnew() />
-		<cfset merges["EMAIL"] = "clint@creativengine.com" />
+		<cfset merges["EMAIL"] = "clint.conklin@gmail.com" />
 		<cfset merges["FNAME"] = "Clint" />
 		<cfset merges["LNAME"] = "Conklin" />
-		<cfset merges["PASSWORD"] = "clint123" />
-		<cfset merges["TYPE"] = "Casting Director" />
 
-		They'll get called like so below:
+		They'll get called like so:
 
-		<cfhttpparam name="merge_vars[EMAIL]" value="clint@creativengine.com" type="url" />
-		<cfhttpparam name="merge_vars[FNAME]" value="clint@creativengine.com" type="url" />
-		<cfhttpparam name="merge_vars[LNAME]" value="clint@creativengine.com" type="url" />
-		<cfhttpparam name="merge_vars[PASSWORD]" value="clint123" type="url" />
-		<cfhttpparam name="merge_vars[EMAIL]" value="clint@creativengine.com" type="url" />
-		<cfhttpparam name="merge_vars[TYPE]" value="Casting Director" type="url" />
+		<cfhttpparam name="merge_vars[EMAIL]" value="clint.conklin@gmail.com" type="url" />
+		<cfhttpparam name="merge_vars[FNAME]" value="Clint" type="url" />
+		<cfhttpparam name="merge_vars[LNAME]" value="Conklin" type="url" />
 	--->
 	<cffunction name="listUpdateMember" access="public" returntype="any" hint="Updates a member">
 		<cfargument name="id" required="true" type="string" hint="id of the list" />
