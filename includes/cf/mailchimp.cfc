@@ -9,7 +9,7 @@
 	<cffunction name="init" access="public" returntype="Any">
 		<cfargument name="apikey" required="true">
 		<cfargument name="output" required="false" default="json" type="string">
-		
+
 		<cfscript>
 			this.options.apikey = arguments.apikey;
 			this.options.output = arguments.output;
@@ -363,7 +363,7 @@
 			[Optional]
 			(string) output : Type of output desired [ xml | json ]
 	-->
-	<cffunction name="listMembers" access="public" returntype="any" hint="I subscribe the provided e-mail to a list">
+	<cffunction name="listMembers" access="public" returntype="any" hint="I get all the members of a given list">
 		<cfargument name="id" required="true" type="string">
 		<cfargument name="status" required="true" type="string">
 		<cfargument name="output" required="false" type="string" default="#this.options.output#">
@@ -395,25 +395,94 @@
 			(string) email : Email of the use to query for.				
 			[Optional]
 			(string) output : Type of output desired [ xml | json ]
+
+		ADDED 11.15.15 by Clint Conklin/CreativEngine: you can now optionally pass an array of email addresses as the email argument to get multiple members
 	-->
-	<cffunction name="listMemberInfo" access="public" returntype="any" hint="I subscribe the provided e-mail to a list">
-		<cfargument name="id" required="true" type="string">
-		<cfargument name="email" required="true" type="string">
-		<cfargument name="output" required="false" type="string" default="#this.options.output#">
-		
+	<cffunction name="listMemberInfo" access="public" returntype="any" hint="I provide detailed info for the given member of a given list">
+		<cfargument name="id" required="true" type="string" />
+		<cfargument name="email" required="true" type="any" />
+		<cfargument name="output" required="false" type="string" default="#this.options.output#" />
+
 	 	<cfhttp url="#this.options.serviceURL#" method="post">
 			<cfhttpparam name="output" value="#arguments.output#" type="url">
 			<cfhttpparam name="method" value="listMemberInfo" type="url">
 			<cfhttpparam name="apikey" value="#this.options.apikey#" type="url">
 			<cfhttpparam name="id" value="#arguments.id#" type="url">
-			<cfhttpparam name="email_address" value="#arguments.email#" type="url">
+			<cfif isarray(ARGUMENTS.email) AND NOT arrayisempty(ARGUMENTS.email)>
+				<cfset count = 0 />
+				<cfloop array="#ARGUMENTS.email#" index="current">
+					<cfhttpparam name="email_address[#count#]" value="#current#" type="url">
+					<cfset count = count + 1 />
+				</cfloop>
+			<cfelse>
+				<cfhttpparam name="email_address" value="#arguments.email#" type="url">
+			</cfif>
 		</cfhttp>	
 	
 		<cfscript>
 			if(StructKeyExists(cfhttp,"errorDetail") && cfhttp.errorDetail != "") return returnError(cfhttp);
 			else return decodeOutput(arguments.output,cfhttp.filecontent);
 		</cfscript>
-	</cffunction>	
+	</cffunction>
+
+	<!--- ADDED 11.14.12 by Clint Conklin/CreativEngine
+		NOTE: merges are dynamic and passed in as a struct; construct your merges like so (example from CSA; tailor to the individual set of merge fields):
+
+		<cfset merges = structnew() />
+		<cfset merges["EMAIL"] = "clint@creativengine.com" />
+		<cfset merges["FNAME"] = "Clint" />
+		<cfset merges["LNAME"] = "Conklin" />
+		<cfset merges["PASSWORD"] = "clint123" />
+		<cfset merges["TYPE"] = "Casting Director" />
+
+		They'll get called like so below:
+
+		<cfhttpparam name="merge_vars[EMAIL]" value="clint@creativengine.com" type="url" />
+		<cfhttpparam name="merge_vars[FNAME]" value="clint@creativengine.com" type="url" />
+		<cfhttpparam name="merge_vars[LNAME]" value="clint@creativengine.com" type="url" />
+		<cfhttpparam name="merge_vars[PASSWORD]" value="clint123" type="url" />
+		<cfhttpparam name="merge_vars[EMAIL]" value="clint@creativengine.com" type="url" />
+		<cfhttpparam name="merge_vars[TYPE]" value="Casting Director" type="url" />
+	--->
+	<cffunction name="listUpdateMember" access="public" returntype="any" hint="Updates a member">
+		<cfargument name="id" required="true" type="string" hint="id of the list" />
+		<cfargument name="email" required="true" type="string" hint="subscribers email address">
+		<cfargument name="merges" required="false" type="struct" default="structnew()" hint="struct containing merge fields and values (see comment above)" />
+		<cfargument name="email_type" required="false" type="string" default="" hint="type of email (text, html, both); leave blank to leave it at its current avlue" />
+		<cfargument name="replace_interests" required="false" default="" hint="pass true or false or leave blank to omit" />
+		<cfargument name="output" required="false" type="string" default="#this.options.output#" />
+
+		<cfset LOCAL = structnew() />
+
+		<!--- http://apidocs.mailchimp.com/api/1.3/listupdatemember.func.php
+			listUpdateMember(string apikey, string id, string email_address, array merge_vars, string email_type, boolean replace_interests)
+		--->
+
+	 	<cfhttp url="#this.options.serviceURL#" method="post">
+	 		<cfhttpparam name="method" value="listUpdateMember" type="url" />
+	 		<cfhttpparam name="apikey" value="#this.options.apikey#" type="url" />
+	 		<cfhttpparam name="id" value="#ARGUMENTS.id#" type="url" />
+	 		<cfhttpparam name="email_address" value="#ARGUMENTS.email#" type="url" />
+	 		<cfif isstruct(ARGUMENTS.merges) AND NOT structisempty(ARGUMENTS.merges)>
+				<cfloop collection="#ARGUMENTS.merges#" item="key">
+					<cfset LOCAL.name = "merge_vars[" & key & "]" />
+					<cfset LOCAL.value = structfind(ARGUMENTS.merges, key) />
+					<cfhttpparam name="#LOCAL.name#" value="#LOCAL.value#" type="url" />
+				</cfloop>
+	 		</cfif>
+			<cfif ARGUMENTS.email_type NEQ "">
+				<cfhttpparam name="email_type" value="#ARGUMENTS.email_type#" type="url" />
+			</cfif>
+			<cfif ARGUMENTS.replace_interests NEQ "">
+				<cfhttpparam name="replace_interests" value="#ARGUMENTS.replace_interests#" type="url" />
+			</cfif>
+		</cfhttp>
+	
+		<cfscript>
+			if(StructKeyExists(cfhttp,"errorDetail") && cfhttp.errorDetail != "") return returnError(cfhttp);
+			else return decodeOutput(arguments.output,cfhttp.filecontent);
+		</cfscript>
+	</cffunction>
 	
 	<!--
 		UTILITY
